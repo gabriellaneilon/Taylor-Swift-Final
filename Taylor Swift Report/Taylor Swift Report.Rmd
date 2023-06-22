@@ -1,0 +1,581 @@
+---
+# IMPORTANT: Change settings here, but DO NOT change the spacing.
+# Remove comments and add values where applicable.
+# The descriptions below should be self-explanatory
+
+title: "Analysing Taylor Swift's Music: Exploring Album Popularity, Song Characteristics, and Predicting Top Hits"
+#subtitle: "This will appear as Right Header"
+
+documentclass: "elsarticle"
+
+# --------- Thesis title (Optional - set to FALSE by default).
+# You can move the details below around as you please.
+Thesis_FP: FALSE
+# Entry1: "An unbelievable study with a title spanning multiple lines."
+# Entry2: "\\textbf{Some Guy}" # textbf for bold
+# Entry3: "A thesis submitted toward the degree of Doctor of Philosophy"
+# Uni_Logo: Tex/Logo.png # Place a logo in the indicated location (from your root, e.g. defaults to ~/Tex/Logo.png) and uncomment this line. Leave uncommented for no image
+# Logo_width: 0.3 # If using a logo - use this to set width (size) of image
+# Entry4: "Under the supervision of: \\vfill Prof. Joe Smith and Dr. Frank Smith"
+# Entry5: "Stellenbosch University"
+# Entry6: April 2020
+# Entry7:
+# Entry8:
+
+# --------- Front Page
+# Comment: ----- Follow this pattern for up to 5 authors
+AddTitle: TRUE # Use FALSE when submitting to peer reviewed platform. This will remove author names.
+Author1: "Gabriella Neilon"  # First Author - note the thanks message displayed as an italic footnote of first page.
+Ref1: "Stellenbosch University" # First Author's Affiliation
+Email1: "22581340\\@sun.ac.za" # First Author's Email address
+
+# Author2: "John Smith"
+# Ref2: "Some other Institution, Cape Town, South Africa"
+# Email2: "John\\@gmail.com"
+# CommonAffiliation_12: TRUE # If Author 1 and 2 have a common affiliation. Works with _13, _23, etc.
+# 
+# Author3: "John Doe"
+# Email3: "Joe\\@gmail.com"
+
+CorrespAuthor_1: TRUE  # If corresponding author is author 3, e.g., use CorrespAuthor_3: TRUE
+
+# Comment out below to remove both. JEL Codes only given if keywords also given.
+keywords: "Taylor Swift \\sep Random Forest Algorithm \\sep Song Prediction" # Use \\sep to separate
+# JELCodes: "L250 \\sep L100"
+
+# ----- Manage headers and footers:
+#BottomLFooter: $Title$
+#BottomCFooter:
+#TopLHeader: \leftmark # Adds section name at topleft. Remove comment to add it.
+BottomRFooter: "\\footnotesize Page \\thepage" # Add a '#' before this line to remove footer.
+addtoprule: TRUE
+addfootrule: TRUE               # Use if footers added. Add '#' to remove line.
+
+# --------- page margins:
+margin: 2.3 # Sides
+bottom: 2 # bottom
+top: 2.5 # Top
+HardSet_layout: TRUE # Hard-set the spacing of words in your document. This will stop LaTeX squashing text to fit on pages, e.g.
+# This is done by hard-setting the spacing dimensions. Set to FALSE if you want LaTeX to optimize this for your paper.
+
+# --------- Line numbers
+linenumbers: FALSE # Used when submitting to journal
+
+# ---------- References settings:
+# You can download cls format here: https://www.zotero.org/ - simply search for your institution. You can also edit and save cls formats here: https://editor.citationstyles.org/about/
+# Hit download, store it in Tex/ folder, and change reference below - easy.
+bibliography: Tex/ref.bib       # Do not edit: Keep this naming convention and location.
+csl: Tex/harvard-stellenbosch-university.csl # referencing format used.
+# By default, the bibliography only displays the cited references. If you want to change this, you can comment out one of the following:
+#nocite: '@*' # Add all items in bibliography, whether cited or not
+# nocite: |  # add specific references that aren't cited
+#  @grinold2000
+#  @Someoneelse2010
+
+# ---------- General:
+RemovePreprintSubmittedTo: TRUE  # Removes the 'preprint submitted to...' at bottom of titlepage
+Journal: "Journal of Finance"   # Journal that the paper will be submitting to, if RemovePreprintSubmittedTo is set to TRUE.
+toc: FALSE                       # Add a table of contents
+numbersections: TRUE             # Should sections (and thus figures and tables) be numbered?
+fontsize: 11pt                  # Set fontsize
+linestretch: 1.2                # Set distance between lines.
+link-citations: TRUE            # This creates dynamic links to the papers in reference list.
+
+### Adding additional latex packages:
+# header-includes:
+#    - \usepackage{colortbl} # Add additional packages here.
+
+output:
+  pdf_document:
+    keep_tex: TRUE
+    template: Tex/TexDefault.txt
+    fig_width: 3.5 # Adjust default figure sizes. This can also be done in the chunks of the text.
+    fig_height: 3.5
+abstract: no
+---
+
+<!-- First: Set your default preferences for chunk options: -->
+
+<!-- If you want a chunk's code to be printed, set echo = TRUE. message = FALSE stops R printing ugly package loading details in your final paper too. I also suggest setting warning = FALSE and checking for warnings in R, else you might find ugly warnings in your paper. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 5, fig.pos="H", fig.pos = 'H')
+# Note: Include = FALSE implies the code is executed, but not printed in your pdf.
+# warning and message = FALSE implies ugly messages and warnings are removed from your pdf.
+# These should be picked up when you execute the command chunks (code sections below) in your rmd, not printed in your paper!
+
+# Lets load in example data, and see how this can be stored and later called from your 'data' folder.
+if(!require("tidyverse")) install.packages("tidyverse")
+library(tidyverse)
+Example_data <- Texevier::Ex_Dat
+
+# Notice that as you are working in a .Rproj file (I am assuming you are) - the relative paths of your directories start at your specified root.
+# This means that when working in a .Rproj file, you never need to use getwd() - it is assumed as your base root automatically.
+write_rds(Example_data, path = "data/Example_data.rds")
+
+```
+
+
+<!-- ############################## -->
+<!-- # Start Writing here: -->
+<!-- ############################## -->
+
+# Background \label{Background}
+
+This report focuses on Taylor Swift, one of the most influential and acclaimed artists of our time. With a remarkable career spanning across country and pop genres, Taylor Swift has left an indelible mark on the music industry, garnering 12 Grammy Awards and a massive fan base.The main objective of this analysis is to predict the top 5 singles from her latest album, _Midnights (3am Edition)_, which was released in October 2022. By analysing a combination of factors, including the album's overall popularity and the distinctive characteristics of each song, I aim to identify the tracks that have the potential make a significant impact on the charts. By delving into Taylor Swift's musical journey and employing predictive modeling techniques, this analysis offers insights and predictions regarding the potential success of her latest album's singles.
+
+# Data & Methodology \label{Data & Methodology}
+## Data {-}
+The dataset used in this analysis is the "Taylor Swift Spotify" dataset obtained from _Kaggle_. It includes various attributes for each song, such as the release date, song length, popularity (represented as a percentage based on Spotify's algorithm), danceability (a measure of how suitable a track is for dancing), acousticness, energy (a measure of intensity and activity), instrumentalness (indicating the presence of vocals in the song), liveness (the probability of the song being recorded with a live audience), loudness (the volume level of the music), speechiness (presence of spoken words in the track), valence (a measure of the song's emotional tone), and tempo (beats per minute).
+
+To simplify the analysis, only the deluxe editions and "Taylor's Version" albums are selected. "Taylor's Version" refers to the music that Taylor Swift owns and has re-recorded. This selection helps to minimise potential bias in the data, considering that Taylor Swift's popularity has likely increased over time, and these albums contain more songs. By including these versions, the analysis levels the playing field among all the albums. Additionally, a target variable called "hit" was engineered using binary encoding. A song is coded as 1 if it was classified as a hit in the respective albums, based on the popularity scores, and 0 if not.
+
+## Methodology {-}
+In order to predict her next top hits on her newest album, I employed the _random forest algorithm_. The _random forest algorithm_ was chosen to make the "next hit prediction" as it provides accurate predictions and efficiently handles large datasets.The strength of this model lies in its "social cognition" of individual decision trees that work together. Each decision tree is created by looking at different features or characteristics of the data and finding the best split at each step. When you want to make a prediction using the Random Forest, you ask all the decision trees for their opinions, and then take a majority vote. Each tree gets one vote, and the majority prediction becomes the final prediction of the Random Forest. This way, the Random Forest combines the strengths and insights of multiple decision trees to make a more accurate prediction.Even if some trees are wrong, the majority of the correct trees guide the collection to the right direction
+
+The _random forest algorithm_ consists of an ensemble of decision trees. The ensemble, called a 'forest,' is trained using bagging or bootstrap aggregating. Bagging is a technique that improves the accuracy of machine learning algorithms by combining their predictions. The algorithm makes predictions by averaging or taking the mean of the outputs from multiple decision trees. Increasing the number of trees enhances the precision of the predictions. Random forest overcomes the limitations of a single decision tree algorithm. It mitigates overfitting issues and improves accuracy. Decision trees are built based on entropy and information gain. Entropy measures uncertainty, while information gain quantifies the reduction in uncertainty of the target variable given independent variables. A higher information gain indicates a greater reduction in uncertainty (entropy). Entropy and information gain are crucial for splitting branches, a vital step in building decision trees. The key characteristic of the _random forest algorithm_ lies in the random selection of root and splitting nodes. The random forest utilises "bagging" to generate predictions. Bagging involves using different samples of training data rather than a single sample. Each decision tree produces different outputs based on the training data fed into the _random forest algorithm_. These outputs are ranked, and the highest-ranked output becomes the final prediction. 
+
+
+## Descriptive Statistics {-}
+In Figure \ref{Figure1}, I present a comprehensive visual representation of Taylor Swift's discography, showcasing the popularity of each album and the emotions evoked by their most popular songs. To capture the emotional essence, I conducted feature engineering by categorizing songs as either "Happy" or "Sad" based on their valence score. Songs with a valence score below 0.5 are classified as "Sad," while those equal to or above 0.5 are deemed "Happy."
+```{r Figure1,  warning =  FALSE, fig.align = 'center', fig.cap = "Popularity per Album \\label{Figure1}", fig.height=6,fig.width=6}
+taylor_swift_spotify <- read.csv("/Users/gabriellaneilon/Library/Mobile Documents/com~apple~CloudDocs/Masters/Taylor Swift/taylor_swift_spotify.csv")
+try <- taylor_swift_spotify[!grepl(paste(c("Karaoke", "Tour", "Japanese", "US", "Live", "Radio", "Special", "International", "Red \\(Deluxe Edition\\)"), collapse = "|"), taylor_swift_spotify$album, ignore.case = TRUE), ]
+
+clean <- try[grepl(paste(c("Midnights \\(3am Edition\\)", "Taylor's Version", "deluxe version", "Deluxe Edition", "Live", "Radio", "Special", "Taylor Swift", "reputation", "Lover"), collapse = "|"), try$album, ignore.case = TRUE), ]
+
+
+
+num_rows <- nrow(clean)  # Get the total number of rows in the dataset
+final_clean <- clean[1:(num_rows - 15), ] 
+
+
+
+rows_to_remove <- c("20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "85", "96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "121", "122", "123", "124", "125", "141","169", "170", "171", "172", "173", "174", "175", "176", "177", "178", "179", "180", "181", "182", "183", "184", "185", "316", "317", "318", "319", "320", "321", "322", "323", "324", "325", "326", "327", "328", "329", "330", "331", "332", "619", "620", "621", "622", "623", "624", "625", "626", "627", "628", "629", "630", "631", "632", "633", "634", "635", "636", "637", "638", "639", "640", "641", "642", "643", "644", "645", "646", "647", "648", "649", "650", "651", "652", "653", "654", "655", "961", "962", "963", "964", "1179")
+
+Clean <- final_clean[!final_clean$X %in% rows_to_remove, ]
+
+ library(glue)
+library(dplyr)
+
+
+# Group the data by album and find the most popular song in each album
+most_popular_songs <- Clean %>%
+  filter(!is.na(album)) %>%
+  mutate(emotion = ifelse(valence <= 0.5, "Sad", "Happy")) %>%
+  group_by(album) %>%
+  filter(popularity == max(popularity, na.rm = TRUE)) %>%
+  dplyr::select(album, name, emotion, popularity) %>%
+  ungroup()
+
+# Plot the popularity per album with most popular song labels
+ggplot(Clean, aes(x = album, y = popularity, fill = album)) +
+  geom_boxplot(alpha = 0.4) +
+  geom_jitter(aes(color = album), size = 3, alpha = 0.8) +
+  ggrepel::geom_text_repel(
+    data = most_popular_songs,
+    aes(label = glue::glue("{album}: {name} ({emotion})")),
+    hjust = -0.1,
+    vjust = 0.5,
+    color = "black",
+    show.legend = FALSE, family="Times", size=3) +
+  theme_classic() +
+  labs(x = "Albums", y = "Popularity", title = "Popularity per Album") +
+  scale_fill_manual(
+    values =  c("skyblue", "chocolate1", "lightgoldenrod", "grey44", "deeppink", "midnightblue", "darkred", "dimgrey", "mediumpurple1", "lightblue")) +
+  scale_color_hue(l = 40, c = 35) +
+  guides(fill = FALSE, color = FALSE) +
+theme(axis.title.x = element_text(face = "bold", colour = "black"),
+          axis.text.x = element_text(face = "italic", angle=45, hjust=1),
+          axis.title.y = element_text(face = "bold", colour = "black"),
+          text = element_text(size = 12, family = "Times"))
+
+```
+The results reveal that Taylor Swift's most popular album, as indicated by its overall popularity and the emotions it elicits, is "reputation". This is followed closely by the album "Lover" and her latest release, "Midnights (3am Edition)". On the other hand, her earlier albums, such as "Taylor Swift" and "Speak Now," exhibit comparatively lower popularity. This observation suggests that popularity is influenced by the release date, with Taylor Swift's later albums enjoying greater recognition, possibly reflecting her ascent to fame over the years.
+
+The subsequent visual representation (Figure \ref{Figure2}) explores the shared characteristics found among the top 5 most popular songs from each of Taylor Swift's albums. By identifying these common traits, I further investigate the composition of the albums using these influential characteristics. This analysis is presented in Figure \ref{Figure3}. 
+```{r Figure2, warning =  FALSE, fig.align = 'center', fig.cap = "Common Characteristics of Top 5 Songs \\label{Figure2}", fig.height=3,fig.width=6}
+library(dplyr)
+library(tidyr)
+library(tidytext)
+library(ggplot2)
+# Filter the data to include only the top 5 most popular songs
+top_songs <- Clean %>%
+  filter(!is.na(album)) %>%
+  arrange(desc(popularity)) %>%
+  slice_head(n = 5)
+
+# Extract the desired characteristics for the top 5 songs
+top_characteristics <- top_songs %>%
+  select(acousticness, danceability, energy, instrumentalness, liveness, loudness, speechiness, valence, tempo)
+
+# Calculate the common characteristics for each variable
+common_characteristics <- sapply(top_characteristics, function(x) {
+  unique_values <- unique(x[complete.cases(x)])
+  if (length(unique_values) > 1) {
+    paste(unique_values, collapse = ", ")
+  } else {
+    as.character(unique_values)
+  }
+})
+
+# Create a dataframe to store the common characteristics
+common_df <- data.frame(Variable = names(common_characteristics),
+                        Common_Values = common_characteristics,
+                        stringsAsFactors = FALSE)
+
+common_df %>% 
+    mutate(as.factor(Common_Values)) %>% 
+ggplot(aes(x=Variable, y=Common_Values, fill=Common_Values))+
+    geom_bar(stat="identity", show.legend = FALSE)+
+    coord_flip()+
+    labs(x="Variable", y="Common Values",
+         title="Common Characteristics of Top 5 Songs")+
+    theme_minimal()+
+    theme(axis.text.x = element_blank(),
+axis.title.x = element_text(face = "bold", colour = "black"),
+          axis.title.y = element_text(face = "bold", colour = "black"),
+          text = element_text(size = 11, family = "Times"))
+
+
+```
+
+```{r Figure3, warning =  FALSE, fig.align = 'center', fig.cap = "Common Characteristics of Top 5 Songs Concentration \\label{Figure3}", fig.height=8,fig.width=8, out.extra='angle=90'}
+library(ggplot2)
+library(dplyr)
+
+
+create_pie_chart <- function(data, characteristic, label){
+  data %>%
+    group_by(album) %>%
+    top_n(5, popularity) %>%
+    group_by(album, {{ characteristic }}) %>%
+    summarise(count = n()) %>%
+    mutate(proportion = count / sum(count)) %>%
+    ggplot(aes(x = "", y = proportion, fill = {{ characteristic }})) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar(theta = "y") +
+    facet_wrap(~ album) +
+    labs(x = NULL, y = NULL, fill = label, title = "") +
+    theme_minimal() +
+    theme(legend.position = "right", 
+axis.title.x = element_text(face = "bold", colour = "black"),
+          axis.text.x = element_text(face = "italic"),
+          axis.title.y = element_text(face = "bold", colour = "black"),
+          text = element_text(size = 10, family = "Times"))
+}
+
+# Usage
+create_pie_chart(Clean,instrumentalness, "Instrumentalness")
+create_pie_chart(Clean, danceability, "Danceability")
+create_pie_chart(Clean, energy, "Energy")
+
+```
+Generally, Taylor Swift's albums exhibit relatively low levels of _instrumentalness_, except for the albums "Lover" and "Midnights (3am Edition)," which have already established themselves as among her most popular works. This suggests that instrumental elements play a significant role in the appeal and success of these particular albums. In Figure \ref{Figure1}, it is observed that albums with lower overall popularity tend to exhibit lower levels of _energy_, while those with higher popularity showcase higher levels of _danceability_. These findings highlight the connection between specific musical attributes and the overall reception of Taylor Swift's albums.
+
+# Results \label{Results}
+## Baseline Model {-}
+```{r}
+#remove
+# Select specific columns by column indices
+sxb_clean <- Clean[, c( 2, 3,4,5,8,9,10,11,12,13,14,15,16,17,18)]  
+
+
+#unique number
+library(dplyr)
+
+
+# Assuming you have already selected the specific columns using the select() function
+selected_columns <- dplyr::select(sxb_clean, name, album, track_number)
+
+# Create a new dataset with transformed columns
+new_dataset <- sxb_clean %>%
+  mutate(name_n = as.factor(name),
+         album_n = as.factor(album))
+# names(final_tree)
+# final_tree <- new_dataset %>% dplyr::select(-name, -album, -track_number)
+# names(final_tree)
+
+
+#
+
+# Split the data into training and test sets based on the date
+train_indices <- which(new_dataset$release_date < as.Date("2022-10-22"))
+test_indices <- which(new_dataset$release_date >= as.Date("2022-10-22"))
+
+train_data <- new_dataset[train_indices, ]
+test_data <- new_dataset[test_indices, ]
+
+
+# Select features and target variable
+features <- c("acousticness", "danceability", "energy", "instrumentalness", "liveness", "loudness", "speechiness", "tempo", "valence", "popularity", "duration_ms")
+target <- "name"
+
+# Convert the target variable to a binary label (hit or not a hit)
+ # Define the popularity thresholds for each album
+
+# Convert the target variable to a binary label (hit or not a hit)
+train_data$hit <- ifelse(train_data$album_n== "Midnights (3am Edition)" & train_data$popularity < 77, 0,
+       ifelse(train_data$album_n== "Midnights (3am Edition)" & train_data$popularity >=77, 1,
+              ifelse(train_data$album_n== "Red (Taylor's Version)" & train_data$popularity < 78, 0,
+       ifelse(train_data$album_n== "Red (Taylor's Version)" & train_data$popularity >=78, 1,
+              ifelse(train_data$album_n== "Fearless (Taylor's Version)" & train_data$popularity < 69, 0,
+       ifelse(train_data$album_n== "Fearless (Taylor's Version)" & train_data$popularity >=69, 1,
+              ifelse(train_data$album_n== "evermore (deluxe version)" & train_data$popularity < 70, 0,
+       ifelse(train_data$album_n==  "evermore (deluxe version)" & train_data$popularity >=70, 1,
+              ifelse(train_data$album_n== "folklore (deluxe version)" & train_data$popularity < 70, 0,
+       ifelse(train_data$album_n== "folklore (deluxe version)" & train_data$popularity >=70, 1,
+              ifelse(train_data$album_n== "Lover" & train_data$popularity < 79, 0,
+       ifelse(train_data$album_n== "Lover" & train_data$popularity >=79, 1,
+              ifelse(train_data$album_n== "reputation" & train_data$popularity < 83, 0,
+       ifelse(train_data$album_n== "reputation" & train_data$popularity >=83, 1,
+              ifelse(train_data$album_n== "1989 (Deluxe Edition)" & train_data$popularity < 63, 0,
+       ifelse(train_data$album_n== "1989 (Deluxe Edition)" & train_data$popularity >=63, 1,
+              ifelse(train_data$album_n== "Speak Now (Deluxe Edition)" & train_data$popularity < 61, 0,
+       ifelse(train_data$album_n== "Speak Now (Deluxe Edition)" & train_data$popularity >=61, 1,
+                                                                  ifelse(train_data$album_n== "Taylor Swift" & train_data$popularity<59, 0,1)
+                                                           )
+                                                    )
+                                             )
+                                      )
+                               ))))))))))))))
+
+test_data$hit <- ifelse(test_data$album_n== "Midnights (3am Edition)" & test_data$popularity < 77, 0,
+       ifelse(test_data$album_n== "Midnights (3am Edition)" & test_data$popularity >=77, 1,
+              ifelse(test_data$album_n== "Red (Taylor's Version)" & test_data$popularity < 78, 0,
+       ifelse(test_data$album_n== "Red (Taylor's Version)" & test_data$popularity >=78, 1,
+              ifelse(test_data$album_n== "Fearless (Taylor's Version)" & test_data$popularity < 69, 0,
+       ifelse(test_data$album_n== "Fearless (Taylor's Version)" & test_data$popularity >=69, 1,
+              ifelse(test_data$album_n== "evermore (deluxe version)" & test_data$popularity < 70, 0,
+       ifelse(test_data$album_n==  "evermore (deluxe version)" & test_data$popularity >=70, 1,
+              ifelse(test_data$album_n== "folklore (deluxe version)" & test_data$popularity < 70, 0,
+       ifelse(test_data$album_n== "folklore (deluxe version)" & test_data$popularity >=70, 1,
+              ifelse(test_data$album_n== "Lover" & test_data$popularity < 79, 0,
+       ifelse(test_data$album_n== "Lover" & test_data$popularity >=79, 1,
+              ifelse(test_data$album_n== "reputation" & test_data$popularity < 83, 0,
+       ifelse(test_data$album_n== "reputation" & test_data$popularity >=83, 1,
+              ifelse(test_data$album_n== "1989 (Deluxe Edition)" & test_data$popularity < 63, 0,
+       ifelse(test_data$album_n== "1989 (Deluxe Edition)" & test_data$popularity >=63, 1,
+              ifelse(test_data$album_n== "Speak Now (Deluxe Edition)" & test_data$popularity < 61, 0,
+       ifelse(test_data$album_n== "Speak Now (Deluxe Edition)" & test_data$popularity >=61, 1,
+                                                                  ifelse(test_data$album_n== "Taylor Swift" & test_data$popularity<59, 0,1)
+                                                           )
+                                                    )
+                                             )
+                                      )
+                               ))))))))))))))
+```
+This model employs the default parameters, with the test data representing Taylor Swift's latest album, "Midnights (3am Edition)," while the train data encompasses all of her previous works leading up to the release of her newest album.
+```{r}
+library(ranger)
+library(dplyr)
+# Train the Random Forest model
+model <- ranger(hit ~ ., data = train_data)
+
+# Make predictions on the test set
+prediction <- predict(model, data = test_data)$predictions
+
+# Add the predictions to the test_data
+test_data$song_prediction <- prediction
+
+# Sort the test data by predicted probabilities in descending order
+sorted_data <- test_data[order(-test_data$song_prediction), ]
+
+# Select the top 3 songs
+top_5_hits <- head(sorted_data, 5)
+
+knitr::kable(
+      top_5_hits$name, col.names = c('Song Name'),caption = "Baseline Model")
+```
+Based on this model, the predicted top 5 singles ("hits") for her next releases are anticipated to be _Maroon_, _Snow On The Beach (feat. Lana Del Rey)_, _The Great War_, _Would've, Could've, Should've_, and _Anti-Hero_. 
+
+## Hypertuned Model {-}
+In this model, I aim to find the optimal configuration for predicting the next top 5 "hits" by exploring different combinations of hyperparameters based on the lowest Root Mean Square Error (RMSE). From this, at each split, the model randomly selects 10 variables to determine the best split. Secondly, I ensure that each terminal node in the decision trees contains at least one observation. Furthermore, I use sampling with replacement, allowing each bootstrap sample used for training individual trees to contain duplicate observations. Additionally, I train each tree on a randomly sampled subset of the training data, comprising 50% of the observations. This random sampling process contributes to the creation of diverse trees and helps reduce correlation among them. Finally, I set a random seed of 123 to ensure the reproducibility of the results. This ensures that when the model is re-run, the same random seed is used, resulting in consistent outcomes. After tuning the hyperparameters, the resulting "best model" achieves a prediction error of 0.171, as indicated by the RMSE. This performance metric assesses how accurately the model predicts the next top 5 hits based on the chosen configuration of parameters.
+
+```{r}
+library(ranger)
+library(dplyr)
+
+# X_train and X_test are the feature matrices, and Y_train and Y_test are the target vectors
+
+col_train <- c("acousticness", "danceability", "energy",
+               "instrumentalness", "liveness", "loudness", "speechiness",
+               "tempo", "valence", "duration_ms", "hit", "popularity", "release_date")
+
+# Subset the training and test datasets with the common columns
+X_train <- train_data[, col_train]
+
+X_test <- test_data[, col_train]
+
+# Create hyperparameter grid
+hyper_grid <- expand.grid(
+  mtry = floor(sqrt(ncol(X_train)) * c(0.5, 1, 1.5)),
+  min.node.size = c(1, 3, 5, 10),
+  replace = c(TRUE, FALSE),
+  sample.fraction = c(0.5, 0.63, 0.8)
+)
+
+# Execute full Cartesian grid search
+results <- lapply(1:nrow(hyper_grid), function(i) {
+  # Fit model for ith hyperparameter combination
+  model <- ranger(
+    formula = hit ~ .,
+    data = train_data,
+    mtry = hyper_grid$mtry[i],
+    min.node.size = hyper_grid$min.node.size[i],
+    replace = hyper_grid$replace[i],
+    sample.fraction = hyper_grid$sample.fraction[i],
+    seed = 123
+  )
+  
+  # Evaluate the model on the test set
+  predictions <- predict(model, data = test_data)$predictions
+  
+  # Calculate RMSE
+  rmse <- sqrt(mean((test_data$hit - predictions)^2))
+  
+  # Return the model and its evaluation results
+  list(model = model, rmse = rmse)
+})
+
+# Combine the results into a data frame
+results_df <- data.frame(
+  mtry = hyper_grid$mtry,
+  min.node.size = hyper_grid$min.node.size,
+  replace = hyper_grid$replace,
+  sample.fraction = hyper_grid$sample.fraction,
+  rmse = sapply(results, function(x) x$rmse),
+  stringsAsFactors = FALSE
+)
+
+# Sort the results by RMSE in ascending order
+sorted_results <- arrange(results_df, rmse)
+
+
+# Print the top 3 songs based on the lowest RMSE
+
+
+model_best <- ranger(
+    formula = hit ~ .,
+    data = train_data,
+    mtry = 10,
+    min.node.size = 1,
+    replace = TRUE,
+    sample.fraction = 0.5,
+    seed = 123
+  )
+
+
+# Make predictions on the test set
+predictions_best <- predict(model_best, data = test_data)$predictions
+
+# Add the predictions to the test_data
+test_data$song_prediction_best <- predictions_best
+
+# Sort the test data by predicted probabilities in descending order
+sorted_data_best <- test_data[order(-test_data$song_prediction_best), ]
+
+# Select the top 3 songs
+top_5_hits_best <- head(sorted_data_best, 5)
+
+
+knitr::kable(
+      top_5_hits_best$name, col.names = c('Song Name'),caption = "Hypertuned Model")
+```
+After fine-tuning the hyperparameters, the resulting "best model" achieves a prediction error of 0.171, as indicated by the RMSE. The RMSE serves as a performance metric, assessing the accuracy of the model in predicting the next top 5 hits based on the selected parameter configuration. Based on this model, the predicted top 5 singles ("hits") for her next releases are anticipated to be _Snow On The Beach (feat. Lana Del Rey)_, _Maroon_, _Would've, Could've, Should've_, _The Great War_, and _Anti-Hero_. 
+
+## Feature Interpretation {-}
+In my analysis, I explore two methods to assess the importance of variables: _impurity-based and permutation-based variable importance_.The _impurity-based approach_ measures the importance of a feature by evaluating how much the randomness in predictions is reduced when splitting on that feature. It uses the impurity measure, such as entropy, to quantify the disorder or lack of purity in a set of samples. The underlying assumption is that an important feature will lead to more effective splits, reducing impurity and improving prediction accuracy.
+
+On the other hand, _permutation-based importance_ also estimates feature importance by evaluating the decrease in model performance when the values of a feature are randomly permuted. This approach provides a direct measure of a feature's contribution to the predictive power of the model. It takes into account the impact of the feature within the entire model, providing valuable insights.
+```{r Figure4, warning =  FALSE, fig.align = 'center', fig.cap = "Impurity-based and Permutation-based Performance \\label{Figure4}", fig.height = 3.5, fig.width = 6}
+# re-run model with impurity-based variable importance
+rf_impurity <- ranger(
+    formula = hit ~ .,
+    data = X_train,
+    mtry = 10,
+    min.node.size = 1,
+    importance = "impurity",
+    replace = TRUE,
+    sample.fraction = 0.5,
+    seed = 123)
+
+# re-run model with permutation-based variable importance
+rf_permutation <- ranger(
+    formula = hit ~ .,
+    data = X_train,
+    mtry = 10,
+    min.node.size = 1,
+    importance = "permutation",
+    replace = TRUE,
+    sample.fraction = 0.5,
+    seed = 123)
+
+
+p1 <- vip::vip(rf_impurity, num_features = 10, bar = FALSE, aesthetics = list(color = "darkred", fill = "darkred"),
+    all_permutations = TRUE, jitter = TRUE) +ggtitle("Impurity")+
+    theme_minimal()+
+    theme(legend.position = "right", 
+axis.title.x = element_text(face = "bold", colour = "black"),
+          axis.text.x = element_text(face = "italic"),
+          axis.title.y = element_text(face = "bold", colour = "black"),
+          text = element_text(size = 12, family = "Times"))
+p2 <- vip::vip(rf_permutation, num_features = 10, bar = FALSE, aesthetics = list(color = "darkred", fill = "darkred"))+ggtitle("Permutation")+
+    theme_minimal()+
+    theme(legend.position = "right", 
+axis.title.x = element_text(face = "bold", colour = "black"),
+          axis.text.x = element_text(face = "italic"),
+          axis.title.y = element_text(face = "bold", colour = "black"),
+          text = element_text(size = 12, family = "Times"))
+
+
+
+
+
+
+gridExtra::grid.arrange(p1, p2, nrow = 1)
+```
+From both the _impurity-based and permutation-based importance_ analyses, certain characteristics stand out as significant. These include _popularity, release date, loudness, and danceability_. These findings align with my previous hypothesis that Taylor Swift's next album's hits will be influenced by her growth in fame over the years. Since "hit" classification is based on popularity, it makes sense that the next hits will be closely linked to the songs' popularity. Additionally, consistent with the descriptive statistics from Figure \ref{Figure3}, danceability emerges as a key feature in her most popular albums.
+
+## Model Performance {-}
+The area under the ROC curve (AUC) is a widely used metric for assessing the overall performance of the model. It quantifies the model's ability to assign higher scores to positive instances than negative instances. An AUC value of 0.5 suggests a random classifier, meaning the model performs no better than random guessing. Conversely, an AUC value of 1 indicates a perfect classifier, where the model perfectly distinguishes between positive and negative instances. 
+```{r Figure5, warning =  FALSE, fig.align = 'center', fig.cap = "Receiver Operating Characteristic Curve \\label{Figure5}", fig.height = 3.4, fig.width = 4}
+library(pROC)
+library(ggplot2)
+library(caret)
+library(ranger)
+library(broom)
+
+# Create the ROC curve
+roc_obj <- roc(sorted_data_best$hit, predictions_best)
+# Extract data for ROC curve
+roc_data <- data.frame(1 - as.numeric(roc_obj$specificities), as.numeric(roc_obj$sensitivities))
+
+# Create the ROC curve plot
+ggplot(roc_data, aes(x = roc_data$X1...as.numeric.roc_obj.specificities., y = roc_data$as.numeric.roc_obj.sensitivities.)) +
+  geom_path() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "False Positive Rate", y = "True Positive Rate") +
+  ggtitle("Receiver Operating Characteristic Curve")+
+    theme_minimal()+
+    theme(legend.position = "right", 
+axis.title.x = element_text(face = "bold", colour = "black"),
+          axis.text.x = element_text(face = "italic"),
+          axis.title.y = element_text(face = "bold", colour = "black"),
+          text = element_text(size = 12, family = "Times"))
+
+```
+The hypertuned _best model_ achieved an AUC value of 0.7917, which indicates that its performance surpasses that of a random classifier. This means that the model is highly proficient in making accurate predictions and effectively distinguishing between positive and negative instances in the classification task at hand. The high AUC score demonstrates the model's strong discriminatory power and its ability to provide reliable classifications. Consequently, we can conclude that the model is an effective classifier.
+
+# Conclusion
+Based on the analysis performed, it can be concluded that the model has shown success in predicting the next top 5 singles from Taylor Swift's discography. The evaluation of the model's performance using the ROC curve revealed that it outperforms a random classifier, indicating its capability to make accurate predictions and serve as a reliable classifier. Although there is a slight difference in the ordering of the songs between the baseline model and the hypertuned model, both models predict the same top 5 songs. It is noteworthy that the song "Anti-Hero" was indeed Taylor Swift's first single from her newest album, which highlights the model's ability to capture upcoming hits. Furthermore, while the remaining songs predicted by the model have not been officially announced as singles, their inclusion in the top 5 aligns with the preferences of the devoted Taylor Swift fan community, known as "Swiftie". As a dedicated "Swiftie" myself, I can affirm that these songs hold high favourability among "Swiftie" enthusiasts based on their online discussions and interactions.
+
+
+<!-- Make title of bibliography here: -->
+<!-- \newpage -->
+
+\newpage
+
+
+
+

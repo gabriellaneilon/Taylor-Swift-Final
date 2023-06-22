@@ -10360,29 +10360,52 @@ Song_lyrics <- data.frame(lyrics = c(
 #add song lyrics to Clean dataset
 Clean$Song_lyrics <- Song_lyrics$lyrics
 
-
-library(glue)
-
-Clean %>% 
-  filter(!is.na(album)) %>%  # Exclude rows with NA album
-  mutate(album = factor(album, levels = c("Taylor Swift", "Fearless (Taylor's Version)", "Speak Now (Deluxe Edition)", "Red (Taylor's Version)", "1989 (Deluxe Edition)", "reputation", "Lover", "folklore (deluxe version)", "evermore (deluxe version)", "Midnights (3am Edition)")),  # Specify the correct order of the album names
-         Text = ifelse(popularity == min(popularity, na.rm = TRUE), glue::glue("Lowest: {album}, {name} ({popularity})"), 
-                       ifelse(popularity == max(popularity, na.rm = TRUE), glue::glue("Highest: {album}, {name} ({popularity})"),
-                              NA_character_))) %>% 
-  ggplot() + 
-  geom_boxplot(aes(x = album, y = popularity, fill = album), alpha = 0.4) +
-  geom_jitter(aes(x = album, y = popularity, color = album), size = 3, alpha = 0.8) + 
-  ggrepel::geom_text_repel(aes(x = album, y = popularity, label = Text), force = TRUE, size = 3) +  # Adjust the size parameter for smaller text
-  theme_bw() + 
-  labs(x = "Albums", y = "Popularity",
-       title = "Popularity per Album") + 
-  scale_fill_manual(values = c("lightblue", "gold", "purple", "red", "blue", "green", "pink", "grey", "darkorange3", "darkblue")) +
-  scale_color_hue(l = 40, c = 35) + 
-  guides(fill = FALSE, color = FALSE)
+View(Clean)
 ```
 
-Now I'm going to look at popular words per album
-```{r pressure, echo=FALSE}
+Exploratory Analysis
+Popularity per album
+```{r, echo=FALSE}
+library(glue)
+library(dplyr)
+
+C
+# Group the data by album and find the most popular song in each album
+most_popular_songs <- Clean %>%
+  filter(!is.na(album)) %>%
+  mutate(emotion = ifelse(valence <= 0.5, "Sad", "Happy")) %>%
+  group_by(album) %>%
+  filter(popularity == max(popularity, na.rm = TRUE)) %>%
+  dplyr::select(album, name, emotion, popularity) %>%
+  ungroup()
+
+# Plot the popularity per album with most popular song labels
+ggplot(Clean, aes(x = album, y = popularity, fill = album)) +
+  geom_boxplot(alpha = 0.4) +
+  geom_jitter(aes(color = album), size = 3, alpha = 0.8) +
+  ggrepel::geom_text_repel(
+    data = most_popular_songs,
+    aes(label = glue::glue("{album}: {name} ({emotion})")),
+    hjust = -0.1,
+    vjust = 0.5,
+    size = 3,
+    color = "black",
+    show.legend = FALSE
+  ) +
+  theme_classic() +
+  labs(x = "Albums", y = "Popularity", title = "Popularity per Album") +
+  scale_fill_manual(
+    values = c("lightblue", "gold", "purple", "red", "blue", "green", "pink", "grey", "darkorange3", "darkblue")
+  ) +
+  scale_color_hue(l = 40, c = 35) +
+  guides(fill = FALSE, color = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Adjust x-axis labels angle
+```
+
+Common characteristics of top 5 songs per album
+```{r, echo=FALSE}
+#Now I'm going to look at popular words per album
+
 library(dplyr)
 library(tidyr)
 library(tidytext)
@@ -10390,137 +10413,555 @@ library(ggplot2)
 
 #text processing
 library(stringr)
+# 
+# #remove special characters
+# Clean$Song_lyrics <- str_replace_all(Clean$Song_lyrics,"<.*?>","")
+# 
+# # function to remove additional special characters
+# removeSpecialChars <- function(x) gsub("[^a-zA-Z0-9 ]", " ", x)
+# # remove special characters
+# Clean$Song_lyrics  <- sapply(Clean$Song_lyrics , removeSpecialChars)
+# 
+# # apply lowercase to all lyric text
+# Clean$Song_lyrics <- sapply(Clean$Song_lyrics, tolower)
+# 
+# # create tidy version of the words from the lyrics
+# tidy_lyric <- Clean %>%
+#     unnest_tokens(word, Song_lyrics)
+# 
+# # remove stop words using stop_words and remove words with 3 or less characters
+# tidy_taylor <- tidy_lyric %>%
+#     anti_join(stop_words) %>%
+#     filter(nchar(word) > 3)
+# 
+# #plotting word_count
+# popular_words <- tidy_taylor %>% 
+#   group_by(album) %>%
+#   count(word, album, sort = TRUE) %>%
+#   dplyr::slice(seq_len(8)) %>%
+#   ungroup() %>%
+#   arrange(album,n) %>%
+#   mutate(row = row_number()) 
+# 
+# popular_words %>%
+#   ggplot(aes(row, n)) +
+#     geom_col(show.legend = NULL, alpha=.75) +
+#     labs(x = NULL, y = "Song Count") +
+#     ggtitle("Popular Words by Year") +   
+#     facet_wrap(~album, scales = "free") +
+#     scale_x_continuous(  # This handles replacement of row 
+#       breaks = popular_words$row, # notice need to reuse data frame
+#       labels = popular_words$word) +
+#     coord_flip()  +
+#     theme_minimal()
+# 
+# #plotting frequency
+# 
+# popular_tfidf_words <- Clean %>%
+#   unnest_tokens(word, name) %>%
+#   distinct() %>%
+#   filter(nchar(word) > 3) %>%
+#   count(release_date, word, sort = TRUE) %>%
+#   ungroup() %>%
+#   bind_tf_idf(word, release_date, n) %>%
+#   arrange(desc(tf_idf))  
+# 
+# top_tfidf_words_year <- popular_tfidf_words %>% 
+#   group_by(release_date) %>% 
+#   dplyr::slice(seq_len(8)) %>%
+#   ungroup() %>%
+#   arrange(release_date, tf_idf) %>%
+#   mutate(row = row_number())
+# 
+# top_tfidf_words_year %>%
+#   ggplot(aes(x = row, tf_idf, fill = as.factor(release_date))) +
+#     geom_col(show.legend = NULL) +
+#     labs(x = NULL, y = "TF-IDF") + 
+#     ggtitle("Important Words using TF-IDF by Year") +
+#     theme_minimal() +  
+#     facet_wrap(~release_date, 
+#                ncol = 2, nrow = 5, 
+#                scales = "free") +
+#     scale_x_continuous(  # this handles replacement of row 
+#       breaks = top_tfidf_words_year$row, # notice need to reuse data frame
+#       labels = top_tfidf_words_year$word) +
+#     coord_flip() 
 
-#remove special characters
-Clean$Song_lyrics <- str_replace_all(Clean$Song_lyrics,"<.*?>","")
 
-# function to remove additional special characters
-removeSpecialChars <- function(x) gsub("[^a-zA-Z0-9 ]", " ", x)
-# remove special characters
-Clean$Song_lyrics  <- sapply(Clean$Song_lyrics , removeSpecialChars)
+#####
+# Filter the data to include only the top 10 most popular songs
+top_songs <- Clean %>%
+  filter(!is.na(album)) %>%
+  arrange(desc(popularity)) %>%
+  slice_head(n = 20)
 
-# apply lowercase to all lyric text
-Clean$Song_lyrics <- sapply(Clean$Song_lyrics, tolower)
+# Extract the desired characteristics for the top 10 songs
+top_characteristics <- top_songs %>%
+  select(acousticness, danceability, energy, instrumentalness, liveness, loudness, speechiness, valence, tempo)
 
-# create tidy version of the words from the lyrics
-tidy_lyric <- Clean %>%
-    unnest_tokens(word, Song_lyrics)
+# Calculate the common characteristics for each variable
+common_characteristics <- sapply(top_characteristics, function(x) {
+  unique_values <- unique(x[complete.cases(x)])
+  if (length(unique_values) > 1) {
+    paste(unique_values, collapse = ", ")
+  } else {
+    as.character(unique_values)
+  }
+})
 
-# remove stop words using stop_words and remove words with 3 or less characters
-tidy_taylor <- tidy_lyric %>%
-    anti_join(stop_words) %>%
-    filter(nchar(word) > 3)
+# Create a dataframe to store the common characteristics
+common_df <- data.frame(Variable = names(common_characteristics),
+                        Common_Values = common_characteristics,
+                        stringsAsFactors = FALSE)
 
-#plotting word_count
-popular_words <- tidy_taylor %>% 
-  group_by(album) %>%
-  count(word, album, sort = TRUE) %>%
-  slice(seq_len(8)) %>%
-  ungroup() %>%
-  arrange(album,n) %>%
-  mutate(row = row_number()) 
+# Print the common characteristics
+print(common_df)
 
-popular_words %>%
-  ggplot(aes(row, n)) +
-    geom_col(show.legend = NULL, fill = "#edc948", alpha=.75) +
-    labs(x = NULL, y = "Song Count") +
-    ggtitle("Popular Words by Year") +   
-    facet_wrap(~album, scales = "free") +
-    scale_x_continuous(  # This handles replacement of row 
-      breaks = popular_words$row, # notice need to reuse data frame
-      labels = popular_words$word) +
-    coord_flip()  +
-    theme_minimal()
+ggplot(common_df, aes(x=Variable, y=Common_Values, fill=Common_Values))+
+    geom_bar(stat="identity", show.legend = FALSE)+
+    coord_flip()+
+    labs(x="Variable", y="Common Values",
+         title="Common Characteristics of Top 20 Songs")+
+    theme_minimal()+
+    theme(axis.text.x = element_blank())
+```
 
-#plotting frequency
-
-popular_tfidf_words <- Clean %>%
-  unnest_tokens(word, name) %>%
-  distinct() %>%
-  filter(nchar(word) > 3) %>%
-  count(release_date, word, sort = TRUE) %>%
-  ungroup() %>%
-  bind_tf_idf(word, release_date, n) %>%
-  arrange(desc(tf_idf))  
-
-top_tfidf_words_year <- popular_tfidf_words %>% 
-  group_by(release_date) %>% 
-  slice(seq_len(8)) %>%
-  ungroup() %>%
-  arrange(release_date, tf_idf) %>%
-  mutate(row = row_number())
-
-top_tfidf_words_year %>%
-  ggplot(aes(x = row, tf_idf, fill = as.factor(release_date))) +
-    geom_col(show.legend = NULL) +
-    labs(x = NULL, y = "TF-IDF") + 
-    ggtitle("Important Words using TF-IDF by Year") +
-    theme_minimal() +  
-    facet_wrap(~release_date, 
-               ncol = 2, nrow = 5, 
-               scales = "free") +
-    scale_x_continuous(  # this handles replacement of row 
-      breaks = top_tfidf_words_year$row, # notice need to reuse data frame
-      labels = top_tfidf_words_year$word) +
-    coord_flip() 
+Based on common characteristics look at 
+```{r, echo=FALSE}
+library(ggplot2)
+library(dplyr)
 
 
-> popular_tfidf_words <- Clean %>%
-+   unnest_tokens(word, name) %>%
-+   distinct() %>%
-+   filter(nchar(word) > 3) %>%
-+   count(album, word, sort = TRUE) %>%
-+   ungroup() %>%
-+   bind_tf_idf(word, album, n) %>%
-+   arrange(desc(tf_idf))  
-> top_tfidf_words_year <- popular_tfidf_words %>% 
-+   group_by(album) %>% 
-+   slice(seq_len(8)) %>%
-+   ungroup() %>%
-+   arrange(album, tf_idf) %>%
-+   mutate(row = row_number())
-> top_tfidf_words_year %>%
-+   ggplot(aes(x = row, tf_idf, fill = as.factor(album))) +
-+     geom_col(show.legend = NULL) +
-+     labs(x = NULL, y = "TF-IDF") + 
-+     ggtitle("Important Words using TF-IDF by Year") +
-+     theme_minimal() +  
-+     facet_wrap(~album, 
-+                ncol = 2, nrow = 5, 
-+                scales = "free") +
-+     scale_x_continuous(  # this handles replacement of row 
-+       breaks = top_tfidf_words_year$row, # notice need to reuse data frame
-+       labels = top_tfidf_words_year$word) +
-+     coord_flip() 
-> popular_tfidf_words <- Clean %>%
-+   unnest_tokens(word, Song_lyrics) %>%
-+   distinct() %>%
-+   filter(nchar(word) > 3) %>%
-+   count(album, word, sort = TRUE) %>%
-+   ungroup() %>%
-+   bind_tf_idf(word, album, n) %>%
-+   arrange(desc(tf_idf))  
-> top_tfidf_words_year <- popular_tfidf_words %>% 
-+   group_by(album) %>% 
-+   slice(seq_len(8)) %>%
-+   ungroup() %>%
-+   arrange(album, tf_idf) %>%
-+   mutate(row = row_number())
-> top_tfidf_words_year %>%
-+   ggplot(aes(x = row, tf_idf, fill = as.factor(album))) +
-+     geom_col(show.legend = NULL) +
-+     labs(x = NULL, y = "TF-IDF") + 
-+     ggtitle("Important Words using TF-IDF by Year") +
-+     theme_minimal() +  
-+     facet_wrap(~album, 
-+                ncol = 2, nrow = 5, 
-+                scales = "free") +
-+     scale_x_continuous(  # this handles replacement of row 
-+       breaks = top_tfidf_words_year$row, # notice need to reuse data frame
-+       labels = top_tfidf_words_year$word) +
-+     coord_flip() 
+create_pie_chart <- function(data, characteristic, label){
+  data %>%
+    group_by(album) %>%
+    top_n(5, popularity) %>%
+    group_by(album, {{ characteristic }}) %>%
+    summarise(count = n()) %>%
+    mutate(proportion = count / sum(count)) %>%
+    ggplot(aes(x = "", y = proportion, fill = {{ characteristic }})) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar(theta = "y") +
+    facet_wrap(~ album) +
+    labs(x = NULL, y = NULL, fill = label, title = "") +
+    theme_minimal() +
+    theme(legend.position = "right")
+}
+
+# Example usage
+
+  create_pie_chart(Clean,instrumentalness, "Instrumentalness")
+  create_pie_chart(Clean, tempo, "Tempo")
+  create_pie_chart(Clean, valence, "Valence")
+  create_pie_chart(Clean, energy, "Energy")
+
 
 ```
+
+
+
+
+
+Forest Tree
+```{r}
+#remove
+# Select specific columns by column indices
+sxb_clean <- Clean[, c( 2, 3,4,5,8,9,10,11,12,13,14,15,16,17,18)]  
+
+names(sxb_clean)
+#unique number
+library(dplyr)
+
+
+# Assuming you have already selected the specific columns using the select() function
+selected_columns <- dplyr::select(sxb_clean, name, album, track_number)
+
+# Create a new dataset with transformed columns
+new_dataset <- sxb_clean %>%
+  mutate(name_n = as.factor(name),
+         album_n = as.factor(album))
+# names(final_tree)
+# final_tree <- new_dataset %>% dplyr::select(-name, -album, -track_number)
+# names(final_tree)
+
+
+# Load required packages
+library(randomForest)
+
+# Split the data into training and test sets based on the date
+train_indices <- which(new_dataset$release_date < as.Date("2022-10-22"))
+test_indices <- which(new_dataset$release_date >= as.Date("2022-10-22"))
+
+train_data <- new_dataset[train_indices, ]
+test_data <- new_dataset[test_indices, ]
+
+
+# Select features and target variable
+features <- c("acousticness", "danceability", "energy", "instrumentalness", "liveness", "loudness", "speechiness", "tempo", "valence", "popularity", "duration_ms")
+target <- "name"
+
+# Convert the target variable to a binary label (hit or not a hit)
+ # Define the popularity thresholds for each album
+
+# Convert the target variable to a binary label (hit or not a hit)
+train_data$hit <- ifelse(train_data$album_n== "Midnights (3am Edition)" & train_data$popularity < 77, 0,
+       ifelse(train_data$album_n== "Midnights (3am Edition)" & train_data$popularity >=77, 1,
+              ifelse(train_data$album_n== "Red (Taylor's Version)" & train_data$popularity < 78, 0,
+       ifelse(train_data$album_n== "Red (Taylor's Version)" & train_data$popularity >=78, 1,
+              ifelse(train_data$album_n== "Fearless (Taylor's Version)" & train_data$popularity < 69, 0,
+       ifelse(train_data$album_n== "Fearless (Taylor's Version)" & train_data$popularity >=69, 1,
+              ifelse(train_data$album_n== "evermore (deluxe version)" & train_data$popularity < 70, 0,
+       ifelse(train_data$album_n==  "evermore (deluxe version)" & train_data$popularity >=70, 1,
+              ifelse(train_data$album_n== "folklore (deluxe version)" & train_data$popularity < 70, 0,
+       ifelse(train_data$album_n== "folklore (deluxe version)" & train_data$popularity >=70, 1,
+              ifelse(train_data$album_n== "Lover" & train_data$popularity < 79, 0,
+       ifelse(train_data$album_n== "Lover" & train_data$popularity >=79, 1,
+              ifelse(train_data$album_n== "reputation" & train_data$popularity < 83, 0,
+       ifelse(train_data$album_n== "reputation" & train_data$popularity >=83, 1,
+              ifelse(train_data$album_n== "1989 (Deluxe Edition)" & train_data$popularity < 63, 0,
+       ifelse(train_data$album_n== "1989 (Deluxe Edition)" & train_data$popularity >=63, 1,
+              ifelse(train_data$album_n== "Speak Now (Deluxe Edition)" & train_data$popularity < 61, 0,
+       ifelse(train_data$album_n== "Speak Now (Deluxe Edition)" & train_data$popularity >=61, 1,
+                                                                  ifelse(train_data$album_n== "Taylor Swift" & train_data$popularity<59, 0,1)
+                                                           )
+                                                    )
+                                             )
+                                      )
+                               ))))))))))))))
+
+test_data$hit <- ifelse(test_data$album_n== "Midnights (3am Edition)" & test_data$popularity < 77, 0,
+       ifelse(test_data$album_n== "Midnights (3am Edition)" & test_data$popularity >=77, 1,
+              ifelse(test_data$album_n== "Red (Taylor's Version)" & test_data$popularity < 78, 0,
+       ifelse(test_data$album_n== "Red (Taylor's Version)" & test_data$popularity >=78, 1,
+              ifelse(test_data$album_n== "Fearless (Taylor's Version)" & test_data$popularity < 69, 0,
+       ifelse(test_data$album_n== "Fearless (Taylor's Version)" & test_data$popularity >=69, 1,
+              ifelse(test_data$album_n== "evermore (deluxe version)" & test_data$popularity < 70, 0,
+       ifelse(test_data$album_n==  "evermore (deluxe version)" & test_data$popularity >=70, 1,
+              ifelse(test_data$album_n== "folklore (deluxe version)" & test_data$popularity < 70, 0,
+       ifelse(test_data$album_n== "folklore (deluxe version)" & test_data$popularity >=70, 1,
+              ifelse(test_data$album_n== "Lover" & test_data$popularity < 79, 0,
+       ifelse(test_data$album_n== "Lover" & test_data$popularity >=79, 1,
+              ifelse(test_data$album_n== "reputation" & test_data$popularity < 83, 0,
+       ifelse(test_data$album_n== "reputation" & test_data$popularity >=83, 1,
+              ifelse(test_data$album_n== "1989 (Deluxe Edition)" & test_data$popularity < 63, 0,
+       ifelse(test_data$album_n== "1989 (Deluxe Edition)" & test_data$popularity >=63, 1,
+              ifelse(test_data$album_n== "Speak Now (Deluxe Edition)" & test_data$popularity < 61, 0,
+       ifelse(test_data$album_n== "Speak Now (Deluxe Edition)" & test_data$popularity >=61, 1,
+                                                                  ifelse(test_data$album_n== "Taylor Swift" & test_data$popularity<59, 0,1)
+                                                           )
+                                                    )
+                                             )
+                                      )
+                               ))))))))))))))
+###
+# train_data_t <- train_data %>% dplyr::select(hit,name,acousticness, danceability, energy, instrumentalness, liveness, loudness, speechiness, tempo, valence,duration_ms)
+# test_data_t <- test_data %>% dplyr::select(hit,name,acousticness, danceability, energy, instrumentalness, liveness, loudness, speechiness, tempo, valence,duration_ms)
+# 
+# # Train the Random Forest model
+# model_t <- ranger(hit ~ ., data = train_data_t)
+# 
+# # Make predictions on the test set
+# predictions_t <- predict(model_t, data = test_data_t)$predictions
+# 
+# # Add the predictions to the test_data
+# test_data_t$song_prediction_t <- predictions_t
+# 
+# # Sort the test data by predicted probabilities in descending order
+# sorted_data_t <- test_data_t[order(-test_data_t$song_prediction_t), ]
+# 
+# # Select the top 3 songs
+# top_3_hits_t <- head(sorted_data_t, 3)
+# 
+# # Print the top 3 hits
+# print(top_3_hits_t$name)
+#######
+
+# Train the Random Forest model
+model <- ranger(hit ~ ., data = train_data)
+
+# Make predictions on the test set
+prediction <- predict(model, data = test_data)$predictions
+
+# Add the predictions to the test_data
+test_data$song_prediction <- prediction
+
+# Sort the test data by predicted probabilities in descending order
+sorted_data <- test_data[order(-test_data$song_prediction), ]
+
+# Select the top 3 songs
+top_5_hits <- head(sorted_data, 5)
+
+# Print the top 3 hits
+print(top_5_hits$name)
+
+knitr::kable(
+      top_5_hits$name, col.names = c('Song Name'),caption = "Next hits predicted")
+
+
+
+```
+11.5 Tuning strategies
+As we introduce more complex algorithms with greater number of hyperparameters, we should become more strategic with our tuning strategies. One way to become more strategic is to consider how we proceed through our grid search. Up to this point, all our grid searches have been full Cartesian grid searches where we assess every combination of hyperparameters of interest. We could continue to do the same; for example, the next code block searches across 120 combinations of hyperparameter settings.
+
+```{r}
+library(ranger)
+library(dplyr)
+
+
+# # Assuming you have already split your data into training and test datasets
+# # X_train and X_test are the feature matrices, and Y_train and Y_test are the target vectors
+# 
+# # Get common column names between X_train and X_test
+# common_cols <- intersect(colnames(X_train), colnames(X_test))
+# 
+# # Subset the training and test datasets with the common columns
+# X_train <- X_train[, common_cols]
+# X_test <- X_test[, common_cols]
+# 
+# # Train the random forest model
+# model <- ranger(Y_train ~ ., data = cbind(X_train, Y_train))
+# 
+# # Predict on the test set
+# predictions <- predict(model, data = X_test)$predictions
+# 
+# # Combine the predicted values with the test data
+# predicted_data <- cbind(X_test, predicted_song_name = predictions)
+# 
+# # Show the top 3 predicted songs
+# top_predicted_songs <- head(predicted_data[order(-predictions), ], 3)
+
+
+library(dplyr)
+
+library(ranger)
+library(dplyr)
+
+# Assuming you have already split your data into training and test datasets
+# X_train and X_test are the feature matrices, and Y_train and Y_test are the target vectors
+
+col_train <- c("acousticness", "danceability", "energy",
+               "instrumentalness", "liveness", "loudness", "speechiness",
+               "tempo", "valence", "duration_ms", "hit", "popularity", "release_date")
+
+# Subset the training and test datasets with the common columns
+X_train <- train_data[, col_train]
+
+X_test <- test_data[, col_train]
+
+# # Train the random forest model
+# model <- ranger(Y_train ~ ., data = cbind(X_train, Y_train))
+# 
+# # Predict on the test set
+# predictions <- predict(model, data = X_test)$predictions
+# 
+# # Combine the predicted values with the test data
+# predicted_data <- cbind(X_test, predicted_song_name = predictions)
+# 
+# # Show the top 3 predicted songs
+# top_predicted_songs <- head(predicted_data[order(-predictions), ], 3)
+
+
+# Create hyperparameter grid
+hyper_grid <- expand.grid(
+  mtry = floor(sqrt(ncol(X_train)) * c(0.5, 1, 1.5)),
+  min.node.size = c(1, 3, 5, 10),
+  replace = c(TRUE, FALSE),
+  sample.fraction = c(0.5, 0.63, 0.8)
+)
+
+# Execute full Cartesian grid search
+results <- lapply(1:nrow(hyper_grid), function(i) {
+  # Fit model for ith hyperparameter combination
+  model <- ranger(
+    formula = hit ~ .,
+    data = train_data,
+    mtry = hyper_grid$mtry[i],
+    min.node.size = hyper_grid$min.node.size[i],
+    replace = hyper_grid$replace[i],
+    sample.fraction = hyper_grid$sample.fraction[i],
+    seed = 123
+  )
+  
+  # Evaluate the model on the test set
+  predictions <- predict(model, data = test_data)$predictions
+  
+  # Calculate RMSE
+  rmse <- sqrt(mean((test_data$hit - predictions)^2))
+  
+  # Return the model and its evaluation results
+  list(model = model, rmse = rmse)
+})
+
+# Combine the results into a data frame
+results_df <- data.frame(
+  mtry = hyper_grid$mtry,
+  min.node.size = hyper_grid$min.node.size,
+  replace = hyper_grid$replace,
+  sample.fraction = hyper_grid$sample.fraction,
+  rmse = sapply(results, function(x) x$rmse),
+  stringsAsFactors = FALSE
+)
+
+# Sort the results by RMSE in ascending order
+sorted_results <- arrange(results_df, rmse)
+
+
+# Print the top 3 songs based on the lowest RMSE
+
+
+model_best <- ranger(
+    formula = hit ~ .,
+    data = train_data,
+    mtry = 10,
+    min.node.size = 1,
+    replace = TRUE,
+    sample.fraction = 0.5,
+    seed = 123
+  )
+
+model_best
+# Make predictions on the test set
+predictions_best <- predict(model_best, data = test_data)$predictions
+
+# Add the predictions to the test_data
+test_data$song_prediction_best <- predictions_best
+
+# Sort the test data by predicted probabilities in descending order
+sorted_data_best <- test_data[order(-test_data$song_prediction_best), ]
+
+# Select the top 3 songs
+top_5_hits_best <- head(sorted_data_best, 5)
+
+# Print the top 3 hits
+print(top_5_hits_best$name)
+
+knitr::kable(
+      top_5_hits_best$name, col.names = c('Song Name'),caption = "Next hits predicted")
+
+```
+
+
+
+Look at the best predictors
+
+```{r pressure, echo=FALSE}
+# re-run model with impurity-based variable importance
+rf_impurity <- ranger(
+    formula = hit ~ .,
+    data = X_train,
+    mtry = 10,
+    min.node.size = 1,
+    importance = "impurity",
+    replace = TRUE,
+    sample.fraction = 0.5,
+    seed = 123)
+
+# re-run model with permutation-based variable importance
+rf_permutation <- ranger(
+    formula = hit ~ .,
+    data = X_train,
+    mtry = 10,
+    min.node.size = 1,
+    importance = "permutation",
+    replace = TRUE,
+    sample.fraction = 0.5,
+    seed = 123)
+
+
+p1 <- vip::vip(rf_impurity, num_features = 10, bar = FALSE, aesthetics = list(color = "darkred", fill = "darkred"),
+    all_permutations = TRUE, jitter = TRUE) +ggtitle("Impurity-based variable importance")
+p2 <- vip::vip(rf_permutation, num_features = 10, bar = FALSE, aesthetics = list(color = "darkred", fill = "darkred"))
+
+
+
+
+
+
+gridExtra::grid.arrange(p1, p2, nrow = 1)
+```
+
+
+Impurity-based importance and permutation-based importance are two different approaches for estimating the feature importance in a Random Forest model.
+
+Impurity-Based Importance:
+Impurity-based importance, also known as Gini importance or mean decrease impurity, is a commonly used method to measure feature importance in Random Forests. It assesses the importance of a feature by evaluating how much the impurity or randomness in the predictions is reduced by splitting on that feature. The impurity measure, such as Gini impurity or entropy, quantifies the disorder or lack of purity in a set of samples. The idea is that if a feature is important, it will create more effective splits that reduce the impurity and lead to more accurate predictions.
+The impurity-based importance is computed during the construction of the Random Forest model. It calculates the total reduction in impurity over all decision trees in the forest for each feature. The importance values are then scaled so that the sum of all feature importances equals 100%.
+
+Permutation-Based Importance:
+Permutation-based importance, also known as mean decrease accuracy or mean decrease performance, is an alternative approach to estimate feature importance in Random Forests. It evaluates the importance of a feature by measuring the decrease in the model's performance when the values of that feature are randomly shuffled or permuted.
+The permutation-based importance is calculated after the Random Forest model is trained. The procedure involves permuting the values of a single feature while keeping the other features unchanged and measuring the decrease in the model's accuracy or another performance metric. If a feature is important, permuting its values will disrupt the relationship with the target variable, resulting in a significant drop in the model's performance.
+
+Compared to impurity-based importance, permutation-based importance provides a more direct measure of a feature's contribution to the model's predictive power. It considers the effect of a feature in the context of the entire model
+
+
+
+n simpler terms, impurity-based importance tells us how much each feature contributes to making accurate predictions in a Random Forest model by measuring how well it helps to split the data into pure subsets.In simpler terms, permutation-based importance measures the importance of a feature by checking how much the model's performance suffers when the values of that feature are randomly mixed up. If shuffling a feature's values causes a big drop in performance, it means that feature is important for accurate predictions.
+
+
+
+
+Permutation feature importance is a way to measure the importance of a feature in a model. It does this by checking how much the model's prediction error increases when we randomly shuffle or mix up the values of that feature, which breaks the connection between the feature and the true outcome we're trying to predict.
+
+
+
+
+
+
+How well does my model perform:
+```{r}
+library(pROC)
+library(ggplot2)
+library(caret)
+library(ranger)
+library(broom)
+
+
+
+
+
+# Create the ROC curve
+roc_obj <- roc(sorted_data_best$hit, predictions_best)
+# Extract data for ROC curve
+roc_data <- data.frame(1 - as.numeric(roc_obj$specificities), as.numeric(roc_obj$sensitivities))
+
+# Create the ROC curve plot
+roc_plot <- ggplot(roc_data, aes(x = roc_data$X1...as.numeric.roc_obj.specificities., y = roc_data$as.numeric.roc_obj.sensitivities.)) +
+  geom_path() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "False Positive Rate", y = "True Positive Rate") +
+  ggtitle("ROC Curve")
+
+# Display the ROC curve plot
+print(roc_plot)
+
+
+
+
+
+
+
+# Display the ROC curve plot
+print(roc_plot)
+
+# Create the prediction plot (scatter plot)
+prediction_plot <- ggplot(test_data, aes(x = song_prediction_best, y = name_n)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Predicted Values", y = "True Values") +
+  ggtitle("Prediction Plot")
+
+# Display the prediction plot
+print(prediction_plot)
+
+```
+
+Higher x-values indicate higher false positives than true negatives. higher y-axis indicate higher number of true positives than false negatives
+The true positive rate represents the proportion of observations that are predicted to be positive when indeed they are positive.
+
+Conversely, the false positive rate represents the proportion of observations that are predicted to be positive when they’re actually negative.
+The more that the ROC curve hugs the top left corner of the plot, the better the model does at classifying the data into categories.A model with an AUC equal to 0.5 would be a perfectly diagonal line and it would represent a model that is no better than a model that makes random classifications
+Data: predictions_best in 12 controls (sorted_data_best$hit 0) < 8 cases (sorted_data_best$hit 1).
+Area under the curve: 0.7917
 
 Data exploration
 ```{r}
